@@ -1,1 +1,0 @@
-/usr/bin/gcc -g -Wl,--dependency-file=CMakeFiles/calcium.dir/link.d CMakeFiles/calcium.dir/main.c.o CMakeFiles/calcium.dir/include/decoder.c.o CMakeFiles/calcium.dir/include/addr_space.c.o CMakeFiles/calcium.dir/include/bootloader.c.o CMakeFiles/calcium.dir/include/terminal.c.o -o calcium
