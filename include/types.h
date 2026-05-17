@@ -14,6 +14,8 @@ word data_i;
 word mtvec;
 word mepc;
 word mcause;
+word mtval;
+word mstatus;
 unsigned int sys_err_table;
 } rv32i;
 typedef enum {
