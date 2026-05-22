@@ -76,47 +76,43 @@ int decode(rv32i *cpu,word instr){
                         cpu->pc = trap_address - 4;
                         break;
                     case 0b001100000010: //mret
-                        cpu->pc = cpu-> mepc;
+                        cpu->pc = cpu-> mepc -4;
                         break;
                     default:
                     cpu->sys_err_table|=UNDEFINED_OPCODE;
                         break;
                     }
                     break;
-                switch (csr_addr) {
-                    case 0x300: target_csr = &cpu->mstatus; break;
-                    case 0x305: target_csr = &cpu->mtvec;   break;
-                    case 0x341: target_csr = &cpu->mepc;    break;
-                    case 0x342: target_csr = &cpu->mcause;  break;
-                    case 0x343: target_csr = &cpu->mtval;   break;
-                    default:
-                        cpu->sys_err_table |= 1; //Undefined opcode
-                        break;
-                }
+
                 case 0b001:
+                target_csr = csr_addr_decoder(cpu,csr_addr);
                 temp = *target_csr;
                 *target_csr = cpu->x[rs1];
                 cpu->x[rd1] = temp;
                     break;
                 case 0b010:
+                target_csr = csr_addr_decoder(cpu,csr_addr);
                 temp = *target_csr;
                 *target_csr |=cpu->x[rs1];
-                
                     break; 
                 case 0b011:
+                target_csr = csr_addr_decoder(cpu,csr_addr);
                 temp = *target_csr;
                 *target_csr &= ~(cpu->x[rs1]);
                 cpu->x[rd1] = temp;
                     break;
                 case 0b101:
+                target_csr = csr_addr_decoder(cpu,csr_addr);
                 cpu->x[rd1] = *target_csr;
                 *target_csr = rs1;
                     break;
                 case 0b110:
+                target_csr = csr_addr_decoder(cpu,csr_addr);
                 cpu->x[rd1] = *target_csr;
                 *target_csr |=rs1;
                     break;
                 case 0b111:
+                target_csr = csr_addr_decoder(cpu,csr_addr);
                 cpu->x[rd1] = *target_csr;
                 *target_csr &= ~rs1;
                     break;
@@ -313,4 +309,17 @@ int decode(rv32i *cpu,word instr){
         cpu->pc = cpu->pc+4;
         cpu->x[0] = 0;
         return cpu->sys_err_table;
+}
+word * csr_addr_decoder(rv32i*cpu,word csr_addr){
+            switch (csr_addr) {
+                    case 0x300: return &cpu->mstatus;
+                    case 0x305: return &cpu->mtvec;
+                    case 0x341: return &cpu->mepc;
+                    case 0x342: return &cpu->mcause; 
+                    case 0x343: return &cpu->mtval; 
+                    default:
+                        cpu->sys_err_table |= 1;
+                        return 0; //Undefined opcode
+                        break;
+                }
 }
