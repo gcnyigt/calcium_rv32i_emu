@@ -1,6 +1,6 @@
 #include"rv32i.h"
+#include"mem.h"
 #include"bootrom/bootrom_hex.h"
-byte mem[0x8000];
 byte terminalbuffer[512];
 word read_word_from_address_space(word address,rv32i *cpu){
     word aligned_addr;
@@ -15,7 +15,7 @@ word read_word_from_address_space(word address,rv32i *cpu){
         cpu->sys_err_table |= ((0x8000 - 0x4) < internal_addr)<<5;
         internal_addr = internal_addr *!(0x8000 - 0x4 < internal_addr);
         aligned_addr = internal_addr & ~0x3;
-        ptr = (word *)&mem[aligned_addr];
+        ptr = (word *)&mem_bin[aligned_addr];
         return *ptr;
         break;
     default:
@@ -36,7 +36,7 @@ void write_word_to_address_space(word address,word data,rv32i *cpu){
         cpu->sys_err_table |= ((0x8000 - 0x4) < internal_addr)<<5;
         internal_addr = internal_addr *!(0x8000 - 0x4 < internal_addr);
         aligned_addr = internal_addr & ~0x3;
-        ptr = (word *)&mem[aligned_addr];
+        ptr = (word *)&mem_bin[aligned_addr];
         *ptr = data;
         break;
     default:
@@ -56,7 +56,7 @@ hword read_hword_from_address_space(word address,rv32i *cpu){
         cpu->sys_err_table |= ((0x8000 - 0x2) < internal_addr)<<5;
         internal_addr = internal_addr *!(0x8000 - 0x2 < internal_addr);
         aligned_addr = internal_addr & ~0x1;
-        ptr = (hword *)&mem[aligned_addr];
+        ptr = (hword *)&mem_bin[aligned_addr];
         return *ptr;
         break;
     default:
@@ -77,7 +77,7 @@ void write_hword_to_address_space(word address, hword data,rv32i *cpu){
         cpu->sys_err_table |= ((0x8000 - 0x2) < internal_addr)<<5;
         internal_addr = internal_addr *!(0x8000-0x2 < internal_addr);
         aligned_addr = internal_addr & ~0x1;
-        ptr = (hword *)&mem[aligned_addr];
+        ptr = (hword *)&mem_bin[aligned_addr];
         *ptr = data;
         break;   
     default:
@@ -94,13 +94,13 @@ byte read_byte_from_address_space(word address,rv32i*cpu){
         internal_addr = address & 0xFFFF;
         cpu->sys_err_table |= ((0x8000) < internal_addr)<<5;
         internal_addr = internal_addr *!(0x8000 < internal_addr);
-        return mem[internal_addr] ;
+        return mem_bin[internal_addr] ;
         break;
     case 0x9:
         internal_addr = address & 0x7FFF;
         cpu->sys_err_table |= (512 < internal_addr)<<5;
         internal_addr = internal_addr *!(512 < internal_addr);
-        return mem[internal_addr];
+        return mem_bin[internal_addr];
         break;
     default:
         cpu->sys_err_table|=SLAVE_ERROR_MASK;
@@ -117,7 +117,7 @@ void write_byte_to_address_space(word address,byte data,rv32i* cpu){
         internal_addr = address & 0xFFFF;
         cpu->sys_err_table |= ((0x8000) < internal_addr)<<5;
         internal_addr = internal_addr *!(0x8000 < internal_addr);
-        mem[internal_addr] = data;
+        mem_bin[internal_addr] = data;
         break;
     case 0x9:
         internal_addr = address & 0xFFFF;
@@ -151,7 +151,7 @@ word fetch_instr(rv32i*cpu){
         cpu->sys_err_table |= ((0x8000 - 0x4) < internal_addr);//FETCH_ERR_MASK
         internal_addr = internal_addr *!(0x8000 - 0x4 < internal_addr);
         aligned_addr = internal_addr & ~0x3;
-        ptr = (word *)&mem[aligned_addr];
+        ptr = (word *)&mem_bin[aligned_addr];
         return *ptr;
         break;
     case 0x9:

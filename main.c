@@ -1,6 +1,5 @@
 #include<stdio.h>
 #include"include/rv32i.h"
-#include "program.h"
 #include <unistd.h>
 #include <string.h>
 void log_cpu_state(FILE *log_file, rv32i *cpu, word current_instr) {
@@ -30,11 +29,6 @@ int main(int argc, char *argv[])
     }
 
     cpu.sys_err_table = 0;
-    const word program_addr = 0x80000000;
-    for (int i = 0; i < program_bin_len; i++)
-    {
-        write_byte_to_address_space(program_addr + i,program_bin[i],&cpu);
-    }
     FILE *debug_log = NULL;
     if (debug_mode) {
         debug_log = fopen("cpu_debug.log", "w");
@@ -44,8 +38,6 @@ int main(int argc, char *argv[])
             printf("Unable to initialize log file\n");
         }
     }
-
-    printf("==================================\n");
     switch (debug_mode)
     {
     case 0:

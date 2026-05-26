@@ -24,7 +24,6 @@ FETCH_ERR_MASK      = 0b00000001,
 UNDEFINED_OPCODE    = 0b10000000,
 SLAVE_ERROR_MASK    = 0b00100000,
 } bus_masks;
-extern byte mem[];
 extern byte terminalbuffer[];
 typedef enum{
 WORD  = 4,
