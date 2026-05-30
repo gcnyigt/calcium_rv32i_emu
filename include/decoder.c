@@ -9,7 +9,7 @@ int decode(rv32i *cpu,word instr){
     byte func7;
     word address;
     switch (opcode)
-    {  
+    {              
         case 0b1100011: // B-Type
             rs1 = (instr >> 15) & 0x1F;
             rs2 = (instr >> 20) & 0x1F;
@@ -207,49 +207,129 @@ int decode(rv32i *cpu,word instr){
                 
         break;
         case 0b0110011: // R type instructions
-            rd1 = (instr >> 7)& 0x1F;
-            funct3 = (instr >> 12)&0x7;
-            rs1 = (instr >> 15)&0x1F;
-            rs2 = (instr >> 20)&0x1F;
-            func7 = (instr >> 25)&0x7f;
-            byte combined = func7 | funct3;
-            switch (combined)
-            {
-                case 0b00000000:
-                    cpu->x[rd1] = cpu->x[rs1] + cpu->x[rs2]; //add
-                    break;
-                case 0b00100000:
-                    cpu->x[rd1] = cpu->x[rs1] - cpu->x[rs2]; //sub
-                    break;
-                case 0b00000001:
-                    cpu->x[rd1] = cpu->x[rs1] << cpu->x[rs2]; //sll
-                    break;    
-                case 0b00000010:
-                    cpu->x[rd1] = (signed int)cpu->x[rs1] < (signed int)cpu->x[rs2]; //slt
-                    break;        
-                case 0b00000011:
-                    cpu->x[rd1] = cpu->x[rs1] < cpu->x[rs2]; //sltu
-                    break;
-                case 0b00000100:
-                    cpu->x[rd1] = cpu->x[rs1] ^ cpu->x[rs2]; //xor
-                    break;
-                case 0b00000101:
-                    cpu->x[rd1] = cpu->x[rs1] >> cpu->x[rs2]; //srl
-                    break;
-                case 0b00100101:
-                    cpu->x[rd1] = (signed int)cpu->x[rs1] >> (signed int)cpu->x[rs2]; //sra
-                    break;
-                case 0b00000110:
-                    cpu->x[rd1] = cpu->x[rs1] | cpu->x[rs2]; //or
-                    break;
-                case 0b00000111:
-                    cpu->x[rd1] = cpu->x[rs1] & cpu->x[rs2]; //and
-                    break;
-                default:
-                cpu->sys_err_table|=UNDEFINED_OPCODE;
-                    break;
+{
+    rd1 = (instr >> 7) & 0x1F;
+    funct3 = (instr >> 12) & 0x7;
+    rs1 = (instr >> 15) & 0x1F;
+    rs2 = (instr >> 20) & 0x1F;
+    func7 = (instr >> 25) & 0x7F;
+    word combined = (func7 << 3) | funct3;
+    bool zero_err;
+    signed int dividend,divisor;
+    switch (combined)
+    {
+        case 0b0000000000:
+            cpu->x[rd1] = cpu->x[rs1] + cpu->x[rs2]; // add
+            break;
+            
+        case 0b0100000000:
+            cpu->x[rd1] = cpu->x[rs1] - cpu->x[rs2]; // sub
+            break;
+            
+        case 0b0000000001:
+            cpu->x[rd1] = cpu->x[rs1] << (cpu->x[rs2] & 0x1F); // sll
+            break;    
+            
+        case 0b0000000010:
+            cpu->x[rd1] = ((signed int)cpu->x[rs1] < (signed int)cpu->x[rs2]) ? 1 : 0; // slt
+            break;        
+            
+        case 0b0000000011:
+            cpu->x[rd1] = (cpu->x[rs1] < cpu->x[rs2]) ? 1 : 0; // sltu
+            break;
+            
+        case 0b0000000100:
+            cpu->x[rd1] = cpu->x[rs1] ^ cpu->x[rs2]; // xor
+            break;
+            
+        case 0b0000000101:
+            cpu->x[rd1] = cpu->x[rs1] >> (cpu->x[rs2] & 0x1F); // srl
+            break;
+            
+        case 0b0100000101:
+            cpu->x[rd1] = (signed int)cpu->x[rs1] >> (cpu->x[rs2] & 0x1F); // sra
+            break;
+            
+        case 0b0000000110:
+            cpu->x[rd1] = cpu->x[rs1] | cpu->x[rs2]; // or
+            break;
+            
+        case 0b0000000111:
+            cpu->x[rd1] = cpu->x[rs1] & cpu->x[rs2]; // and
+            break;
+            //M Extension
+        case 0b0000001000:
+            cpu->x[rd1] = (signed int)cpu->x[rs1] * (signed int)cpu->x[rs2]; //mul
+            break;
+        case 0b0000001001:
+            cpu->x[rd1] = emulate_mulh((signed int)cpu->x[rs1],(signed int)cpu->x[rs2]);  //mulh
+            break;
+        case 0b0000001011: 
+        {
+            cpu->x[rd1] = mulhu_32(cpu->x[rs1], cpu->x[rs2]); //mulhu
+            break;
+        }    
+        case 0b0000001010:  //mulhsu
+        {
+            word u = cpu->x[rs1]; 
+            word v = cpu->x[rs2]; 
+            
+            word hi = mulhu_32(u, v);
+
+            if ((signed int)u < 0) {
+                hi -= v;
             }
+            
+            cpu->x[rd1] = hi;
+            break;
+        }
+        case 0b000001100://div
+        zero_err = (cpu->x[rs2] == 0);
+        cpu->sys_err_table |= (UNDEFINED_OPCODE*zero_err);
+        divisor = cpu->x[rs2] + zero_err;
+        dividend = cpu->x[rs1];
+        if (dividend == (signed int)0x80000000 && divisor == -1) {
+                cpu->x[rd1] = dividend; break; 
+            }
+        cpu->x[rd1] = ((signed int) dividend /(signed int) divisor )|(0xFFFFFFFF * zero_err);
+
         break;
+        case 0b000001101://divu
+        zero_err = (cpu->x[rs2] == 0);
+        cpu->sys_err_table |= (UNDEFINED_OPCODE*zero_err);
+        divisor = cpu->x[rs2] + zero_err;
+        dividend = cpu->x[rs1];
+        cpu->x[rd1] = ((word) dividend /( word )divisor|(0xFFFFFFFF * zero_err));
+        break;
+        case 0b0000001110: //rem
+        {
+            signed int dividend = (signed int)cpu->x[rs1];
+            signed int rs2_val  = (signed int)cpu->x[rs2];
+            bool zero_err = (rs2_val == 0);
+            bool over_err = (dividend == (signed int)0x80000000 && rs2_val == -1);
+            cpu->sys_err_table |= (UNDEFINED_OPCODE * zero_err); 
+            signed int divisor = rs2_val + zero_err + (over_err * 2); 
+            signed int raw_rem = dividend % divisor;
+            cpu->x[rd1] = (raw_rem * !(zero_err | over_err)) + (dividend * zero_err);
+            break;
+        }
+        case 0b0000001111: //remu
+        {
+            word dividend = (word)cpu->x[rs1];
+            word rs2_val  = (word)cpu->x[rs2];          
+            bool zero_err = (rs2_val == 0);
+            cpu->sys_err_table |= (UNDEFINED_OPCODE * zero_err);
+            word divisor = rs2_val + zero_err; 
+            word raw_rem = dividend % divisor;
+            cpu->x[rd1] = (raw_rem * !zero_err) + (dividend * zero_err);
+            break;
+        }
+        default:
+            cpu->sys_err_table |= UNDEFINED_OPCODE;
+            break;
+    }
+    break;
+}
         case 0b0010011://I type
             imm = (signed int)instr >> 20;
             rd1 = (instr >> 7)& 0x1F;
@@ -305,7 +385,7 @@ int decode(rv32i *cpu,word instr){
             cpu->sys_err_table |= UNDEFINED_OPCODE;
             cpu->pc = cpu->pc+4;
             break;
-        }
+        };
         cpu->pc = cpu->pc+4;
         cpu->x[0] = 0;
         return cpu->sys_err_table;
@@ -322,4 +402,30 @@ word * csr_addr_decoder(rv32i*cpu,word csr_addr){
                         return 0; //Undefined opcode
                         break;
                 }
+}
+signed int emulate_mulh(signed int a, signed int b) {
+    word a_low = (word)a & 0xFFFF;
+    signed int a_high = a >> 16;
+    word b_low = (word)b & 0xFFFF;
+    signed int b_high = b >> 16;
+    word p0 = a_low * b_low;
+    word p1 = a_low * b_high;
+    word p2 = a_high * b_low;
+    word p3 = a_high * b_high;
+    word mid = (p0 >> 16) + (hword)p1 + (hword)p2;
+    word high = p3 + (mid >> 16) + (p1 >> 16) + (p2 >> 16);
+
+    return (signed int)high;
+}
+word mulhu_32(word u, word v) {
+    word u0 = u & 0xFFFF, u1 = u >> 16;
+    word v0 = v & 0xFFFF, v1 = v >> 16;
+    
+    // Çapraz çarpımlar ve taşıma (carry) hesaplamaları
+    word p0 = u0 * v0;
+    word p1 = u1 * v0 + (p0 >> 16);
+    word p2 = u0 * v1 + (p1 & 0xFFFF);
+    
+    // Sonucun en üst 32-bitini döndür
+    return (u1 * v1) + (p1 >> 16) + (p2 >> 16);
 }
